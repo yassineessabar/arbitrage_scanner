@@ -30,6 +30,38 @@ assets:
     min_volume_usd_24h: 1000000
   - symbol: BNB/USDT
     min_volume_usd_24h: 1000000
+  - symbol: XRP/USDT
+    min_volume_usd_24h: 1000000
+  - symbol: DOGE/USDT
+    min_volume_usd_24h: 500000
+  - symbol: ADA/USDT
+    min_volume_usd_24h: 500000
+  - symbol: AVAX/USDT
+    min_volume_usd_24h: 500000
+  - symbol: LINK/USDT
+    min_volume_usd_24h: 500000
+  - symbol: DOT/USDT
+    min_volume_usd_24h: 500000
+  - symbol: MATIC/USDT
+    min_volume_usd_24h: 500000
+  - symbol: UNI/USDT
+    min_volume_usd_24h: 500000
+  - symbol: NEAR/USDT
+    min_volume_usd_24h: 500000
+  - symbol: APT/USDT
+    min_volume_usd_24h: 500000
+  - symbol: ARB/USDT
+    min_volume_usd_24h: 500000
+  - symbol: OP/USDT
+    min_volume_usd_24h: 500000
+  - symbol: SUI/USDT
+    min_volume_usd_24h: 500000
+  - symbol: FIL/USDT
+    min_volume_usd_24h: 500000
+  - symbol: ATOM/USDT
+    min_volume_usd_24h: 500000
+  - symbol: WLD/USDT
+    min_volume_usd_24h: 500000
 
 filters:
   min_annualized_basis: 0.05
