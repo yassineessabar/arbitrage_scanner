@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+venv/
+.env
+data/
+*.db
+*.log
+nohup.out
+scanner.log
+.streamlit/
+.claude/

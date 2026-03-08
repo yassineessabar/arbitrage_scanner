@@ -1,0 +1,202 @@
+# Cursor Rules — V1 Institutional Crypto Arbitrage Scanner
+# This file is auto-loaded by Cursor for every conversation in this project.
+# It injects the full build context so you never have to paste the prompt manually.
+
+## Project Identity
+
+You are building the V1 Institutional Crypto Arbitrage Scanner.
+This is a production-grade Python system for detecting and ranking
+spot vs. futures basis arbitrage opportunities across Binance, Bybit, and OKX.
+
+Always read SYSTEM_DESIGN.md and PROMPT_MULTIAGENT.md before making any changes.
+
+---
+
+## Architecture Rules
+
+- The system is split into 12 agents / modules. Respect module boundaries.
+- NEVER duplicate logic across modules. Each concern has one owner:
+  - Schema definitions       → normalization/schema.py       (Agent 1)
+  - Config / settings        → config/                       (Agent 2)
+  - Exchange connectors      → connectors/                   (Agent 3)
+  - Data normalization       → normalization/                 (Agent 4)
+  - In-memory data store     → market_data/                  (Agent 5)
+  - Basis calculations       → arbitrage/                    (Agent 6)
+  - Opportunity filters      → filters/                      (Agent 7)
+  - Scoring and ranking      → scoring/                      (Agent 8)
+  - Historical persistence   → storage/                      (Agent 9)
+  - Dashboard UI             → dashboard/                    (Agent 10)
+  - System wiring            → main.py + utils/              (Agent 11)
+  - Tests                    → tests/                        (Agent 12)
+
+---
+
+## Coding Standards
+
+- Python 3.11+ only
+- All data models use Pydantic v2
+- All I/O is async (asyncio + websockets)
+- All logging uses structlog (never print())
+- No hardcoded values — all thresholds come from config/settings.py
+- No bare `except:` clauses — always catch specific exceptions
+- No blocking calls inside async functions
+- Type annotations on every function signature
+- Docstrings on every class and public method
+
+---
+
+## Dependency Rules
+
+- connectors/ must NOT import from arbitrage/, filters/, scoring/, or dashboard/
+- normalization/ must NOT import from arbitrage/, filters/, scoring/, or dashboard/
+- market_data/ must NOT import from arbitrage/, filters/, scoring/, or dashboard/
+- dashboard/ must NOT import from connectors/ directly — only from market_data/ and scoring/
+- All modules may import from utils/ and config/
+- All modules may import from normalization/schema.py
+
+Dependency flow (strict):
+  connectors → normalization → market_data → arbitrage → filters → scoring → dashboard
+                                                                            → storage
+
+---
+
+## Key Formulas (never deviate from these)
+
+  basis_abs         = futures_mid - spot_mid
+  basis_pct         = basis_abs / spot_mid
+  annualized_basis  = basis_pct * (365 / days_to_expiry)   [dated futures only]
+
+  executable_cc     = futures_bid - spot_ask               [Cash & Carry]
+  executable_rcc    = spot_bid - futures_ask               [Reverse Cash & Carry]
+
+  total_cost        = (2 × fee_rate) + (2 × slippage)
+  net_edge          = gross_edge - total_cost
+
+  score = (
+      normalize_edge(ann_net_edge)     × 0.35  +
+      normalize_liquidity(vol_usd)     × 0.25  +
+      normalize_spread(spread_pct)     × 0.20  +
+      normalize_freshness(age_seconds) × 0.10  +
+      exchange_quality_rating          × 0.10
+  ) × 100
+
+---
+
+## Signal Classification
+
+  futures_mid > spot_mid AND net_edge_cc > 0 AND passes_filters
+    → Signal: LONG SPOT / SHORT FUT  (Cash & Carry)
+
+  futures_mid < spot_mid AND net_edge_rcc > 0 AND passes_filters
+    → Signal: SHORT SPOT / LONG FUT  (Reverse Cash & Carry)
+
+  basis exists but below threshold OR edge marginal
+    → Signal: WATCH
+
+  otherwise
+    → Signal: NO TRADE
+
+---
+
+## Quote Staleness Rules
+
+  Age 0–5s    → FRESH   → use normally
+  Age 5–30s   → STALE   → use with warning flag in output
+  Age >30s    → DEAD    → exclude from all opportunity calculations
+
+---
+
+## Connector Reliability Rules
+
+- Each connector runs in its own asyncio task
+- A crash in one connector MUST NOT affect any other connector
+- Reconnect with exponential backoff: 1s → 2s → 4s → 8s → max 60s
+- Send heartbeat / ping every 30 seconds
+- Log every connect, disconnect, and error event with structlog
+
+---
+
+## Build Order
+
+When building from scratch, always follow agent order 1 → 12.
+When modifying existing code, always check which agent owns the file
+and respect the interface contracts established by Agent 1 (schema.py).
+
+Never modify normalization/schema.py without updating all downstream consumers.
+
+---
+
+## File Structure Reference
+
+  arbitrage_scanner/
+  ├── PROMPT_MULTIAGENT.md       ← Multi-agent build prompt
+  ├── SYSTEM_DESIGN.md           ← Full system design document
+  ├── .cursorrules               ← This file
+  ├── main.py
+  ├── requirements.txt
+  ├── .env.example
+  ├── connectors/
+  │   ├── base.py
+  │   ├── binance.py
+  │   ├── bybit.py
+  │   └── okx.py
+  ├── normalization/
+  │   ├── schema.py
+  │   ├── normalizer.py
+  │   └── symbol_map.py
+  ├── market_data/
+  │   ├── store.py
+  │   ├── staleness.py
+  │   └── aggregator.py
+  ├── arbitrage/
+  │   ├── basis.py
+  │   ├── carry.py
+  │   └── pairs.py
+  ├── filters/
+  │   ├── __init__.py
+  │   ├── liquidity.py
+  │   ├── spread.py
+  │   ├── edge.py
+  │   └── staleness.py
+  ├── scoring/
+  │   ├── scorer.py
+  │   └── ranker.py
+  ├── dashboard/
+  │   ├── app.py
+  │   ├── scanner_table.py
+  │   ├── top_setups.py
+  │   ├── formatter.py
+  │   └── feed_status.py
+  ├── storage/
+  │   ├── schema.sql
+  │   ├── writer.py
+  │   └── reader.py
+  ├── config/
+  │   ├── settings.py
+  │   └── default.yaml
+  ├── utils/
+  │   ├── logger.py
+  │   ├── time_utils.py
+  │   └── math_utils.py
+  ├── tests/
+  │   ├── conftest.py
+  │   ├── test_schema.py
+  │   ├── test_basis.py
+  │   ├── test_filters.py
+  │   ├── test_scoring.py
+  │   ├── test_normalizer.py
+  │   └── test_storage.py
+  ├── data/
+  └── logs/
+
+---
+
+## Quality Checklist (run mentally before every edit)
+
+  [ ] Does this change respect module ownership boundaries?
+  [ ] Are all values coming from config, not hardcoded?
+  [ ] Is every new function typed and documented?
+  [ ] Is every exception caught specifically and logged?
+  [ ] Are all async functions properly awaited?
+  [ ] Does the change break any existing interface contracts?
+  [ ] Will this still work if one exchange feed goes down?

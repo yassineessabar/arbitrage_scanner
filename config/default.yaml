@@ -1,0 +1,79 @@
+# ═══════════════════════════════════════════════════════════
+# V1 Institutional Crypto Arbitrage Scanner — Default Config
+# ═══════════════════════════════════════════════════════════
+
+system:
+  scan_interval_seconds: 3
+  log_level: INFO
+  storage_path: ./data/arbitrage.db
+
+exchanges:
+  binance:
+    enabled: true
+    fee_taker: 0.0004
+    reliability_score: 95
+  bybit:
+    enabled: true
+    fee_taker: 0.0006
+    reliability_score: 90
+  okx:
+    enabled: true
+    fee_taker: 0.0005
+    reliability_score: 88
+
+assets:
+  - symbol: BTC/USDT
+    min_volume_usd_24h: 10000000
+  - symbol: ETH/USDT
+    min_volume_usd_24h: 5000000
+  - symbol: SOL/USDT
+    min_volume_usd_24h: 1000000
+  - symbol: BNB/USDT
+    min_volume_usd_24h: 1000000
+
+filters:
+  min_annualized_basis: 0.05
+  max_spread_pct: 0.001
+  max_staleness_seconds: 5
+  slippage_assumption: 0.0003
+  min_days_to_expiry: 1
+
+scoring:
+  weights:
+    edge: 0.35
+    liquidity: 0.25
+    spread: 0.20
+    freshness: 0.10
+    exchange: 0.10
+  max_edge_for_normalization: 0.30
+  max_staleness_for_normalization: 5.0
+
+storage:
+  write_interval_seconds: 60
+  basis_change_threshold_bps: 5
+  export_parquet: true
+  export_interval_days: 7
+
+dashboard:
+  refresh_interval_seconds: 30
+  top_opportunities_count: 3
+  min_score_to_display: 0
+
+simulation:
+  enabled: true
+  initial_capital: 10000
+  position_size_pct: 0.10
+  max_open_positions: 5
+  min_score_to_trade: 60.0
+  exit_basis_convergence_pct: 0.002
+  max_hold_days: 90
+
+cross_exchange:
+  enabled: true
+  initial_capital: 10000
+  position_size_pct: 0.10
+  max_open_positions: 5
+  min_edge_to_trade: 0.0005
+  exit_convergence_threshold: 0.0002
+  max_hold_minutes: 120
+  slippage_per_side: 0.0003
