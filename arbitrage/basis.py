@@ -80,7 +80,10 @@ def compute_basis(
         basis_abs=basis_abs,
         net_edge_cc=net_edge_cc_pct,
         net_edge_rcc=net_edge_rcc_pct,
+        gross_edge_cc=gross_edge_cc_pct,
+        gross_edge_rcc=gross_edge_rcc_pct,
         min_net_edge=min_net_edge,
+        is_perpetual=futures.contract_type == ContractType.PERPETUAL,
     )
 
     # ── Spread (futures side, for scoring) ──
@@ -130,29 +133,43 @@ def _classify_signal(
     basis_abs: float,
     net_edge_cc: float,
     net_edge_rcc: float,
+    gross_edge_cc: float = 0.0,
+    gross_edge_rcc: float = 0.0,
     min_net_edge: float = 0.0,
+    is_perpetual: bool = False,
 ) -> Signal:
-    """Classify the trade signal based on basis direction and net edge.
+    """Classify the trade signal based on basis direction and edge.
+
+    For perpetual futures, uses gross edge (before costs) since perp basis
+    is inherently small. For dated futures, uses net edge after costs.
 
     Args:
         basis_abs: Absolute basis (futures_mid - spot_mid).
         net_edge_cc: Net edge for cash & carry after costs.
         net_edge_rcc: Net edge for reverse cash & carry after costs.
+        gross_edge_cc: Gross edge for cash & carry before costs.
+        gross_edge_rcc: Gross edge for reverse cash & carry before costs.
         min_net_edge: Minimum threshold for a tradeable signal.
+        is_perpetual: Whether this is a perpetual futures contract.
 
     Returns:
         Signal enum value.
     """
-    # Cash & Carry: futures premium, positive net edge
-    if basis_abs > 0 and net_edge_cc > min_net_edge:
-        return Signal.CASH_AND_CARRY
-
-    # Reverse Cash & Carry: futures discount, positive net edge
-    if basis_abs < 0 and net_edge_rcc > min_net_edge:
-        return Signal.REVERSE_CC
+    if is_perpetual:
+        # For perps: use gross edge (basis direction is the signal)
+        if basis_abs > 0 and gross_edge_cc > 0:
+            return Signal.CASH_AND_CARRY
+        if basis_abs < 0 and gross_edge_rcc > 0:
+            return Signal.REVERSE_CC
+    else:
+        # For dated futures: require positive net edge after costs
+        if basis_abs > 0 and net_edge_cc > min_net_edge:
+            return Signal.CASH_AND_CARRY
+        if basis_abs < 0 and net_edge_rcc > min_net_edge:
+            return Signal.REVERSE_CC
 
     # Basis exists but edge is marginal
-    if abs(basis_abs) > 0 and (net_edge_cc > -0.001 or net_edge_rcc > -0.001):
+    if abs(basis_abs) > 0 and (net_edge_cc > -0.002 or net_edge_rcc > -0.002):
         return Signal.WATCH
 
     return Signal.NO_TRADE

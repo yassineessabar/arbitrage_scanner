@@ -11,10 +11,11 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Optional
 
 import streamlit as st
 
@@ -74,9 +75,43 @@ st.markdown(
 # ── Shared State File (written by main.py) ──
 STATE_FILE = os.path.join(_project_root, "data", "dashboard_state.json")
 
+# Remote VPS config — set these env vars to sync state from a remote server
+# Example: SCANNER_VPS_HOST=ubuntu@vps-d62ba235.vps.ovh.net
+#          SCANNER_VPS_PASSWORD=yourpassword
+#          SCANNER_VPS_PATH=~/arbitrage_scanner/data/dashboard_state.json
+VPS_HOST = os.environ.get("SCANNER_VPS_HOST", "")
+VPS_PASSWORD = os.environ.get("SCANNER_VPS_PASSWORD", "")
+VPS_REMOTE_PATH = os.environ.get(
+    "SCANNER_VPS_PATH", "~/arbitrage_scanner/data/dashboard_state.json"
+)
+
+
+def _sync_from_vps() -> bool:
+    """Sync dashboard_state.json from remote VPS via scp."""
+    if not VPS_HOST or not VPS_PASSWORD:
+        return False
+    try:
+        os.makedirs(os.path.dirname(STATE_FILE), exist_ok=True)
+        result = subprocess.run(
+            [
+                "sshpass", "-p", VPS_PASSWORD,
+                "scp", "-o", "StrictHostKeyChecking=no",
+                "-o", "ConnectTimeout=5",
+                f"{VPS_HOST}:{VPS_REMOTE_PATH}",
+                STATE_FILE,
+            ],
+            capture_output=True,
+            timeout=10,
+        )
+        return result.returncode == 0
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+
 
 def load_state() -> dict:
-    """Load the current scanner state from the shared JSON file."""
+    """Load the current scanner state, syncing from VPS if configured."""
+    if VPS_HOST:
+        _sync_from_vps()
     if not os.path.exists(STATE_FILE):
         return {}
     try:

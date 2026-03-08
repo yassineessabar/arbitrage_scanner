@@ -10,15 +10,15 @@ system:
 exchanges:
   binance:
     enabled: true
-    fee_taker: 0.0004
+    fee_taker: 0.00015
     reliability_score: 95
   bybit:
     enabled: true
-    fee_taker: 0.0006
+    fee_taker: 0.00020
     reliability_score: 90
   okx:
     enabled: true
-    fee_taker: 0.0005
+    fee_taker: 0.00020
     reliability_score: 88
 
 assets:
@@ -64,10 +64,10 @@ assets:
     min_volume_usd_24h: 500000
 
 filters:
-  min_annualized_basis: 0.05
-  max_spread_pct: 0.001
+  min_annualized_basis: 0.03
+  max_spread_pct: 0.002
   max_staleness_seconds: 5
-  slippage_assumption: 0.0003
+  slippage_assumption: 0.00005
   min_days_to_expiry: 1
 
 scoring:
@@ -87,8 +87,8 @@ storage:
   export_interval_days: 7
 
 dashboard:
-  refresh_interval_seconds: 30
-  top_opportunities_count: 3
+  refresh_interval_seconds: 15
+  top_opportunities_count: 5
   min_score_to_display: 0
 
 simulation:
@@ -96,16 +96,16 @@ simulation:
   initial_capital: 10000
   position_size_pct: 0.10
   max_open_positions: 5
-  min_score_to_trade: 60.0
-  exit_basis_convergence_pct: 0.002
-  max_hold_days: 90
+  min_score_to_trade: 25.0
+  exit_basis_convergence_pct: 0.0005
+  max_hold_days: 30
 
 cross_exchange:
   enabled: true
   initial_capital: 10000
   position_size_pct: 0.10
   max_open_positions: 5
-  min_edge_to_trade: 0.0005
-  exit_convergence_threshold: 0.0002
-  max_hold_minutes: 120
-  slippage_per_side: 0.0003
+  min_edge_to_trade: 0.0001
+  exit_convergence_threshold: 0.00005
+  max_hold_minutes: 60
+  slippage_per_side: 0.00005

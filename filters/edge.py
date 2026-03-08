@@ -37,16 +37,32 @@ def filter_edge(
                 threshold=min_days_to_expiry,
             )
 
-    # Check net edge — at least one direction must be positive
+    # Check net edge — use gross edge (before costs) for perpetuals since
+    # perp basis is inherently small and costs dominate. For dated futures,
+    # require positive net edge after costs.
     best_net_edge = max(basis.net_edge_cc_pct, basis.net_edge_rcc_pct)
-    if best_net_edge <= 0:
-        return FilterResult(
-            filter_name="edge",
-            passed=False,
-            reason=f"No positive net edge (best={best_net_edge:.4%})",
-            value=best_net_edge,
-            threshold=0.0,
-        )
+    best_gross_edge = max(basis.gross_edge_cc_pct, basis.gross_edge_rcc_pct)
+
+    if basis.contract_type == ContractType.PERPETUAL:
+        # For perps: pass if gross edge is positive (basis exists in a tradeable direction)
+        if best_gross_edge <= 0:
+            return FilterResult(
+                filter_name="edge",
+                passed=False,
+                reason=f"No positive gross edge (best={best_gross_edge:.4%})",
+                value=best_gross_edge,
+                threshold=0.0,
+            )
+    else:
+        # For dated futures: require positive net edge after costs
+        if best_net_edge <= 0:
+            return FilterResult(
+                filter_name="edge",
+                passed=False,
+                reason=f"No positive net edge (best={best_net_edge:.4%})",
+                value=best_net_edge,
+                threshold=0.0,
+            )
 
     # Check annualized basis for dated futures
     if basis.contract_type == ContractType.DATED_FUTURE:

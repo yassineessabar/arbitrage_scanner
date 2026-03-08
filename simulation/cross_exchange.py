@@ -113,7 +113,7 @@ class CrossExchangeEngine:
 
         groups: Dict[tuple, List[InstrumentQuote]] = defaultdict(list)
         for q in quotes:
-            if q.contract_type == ContractType.SPOT:
+            if q.contract_type in (ContractType.SPOT, ContractType.PERPETUAL):
                 groups[(q.asset, q.contract_type)].append(q)
 
         qualified: List[CrossExchangeOpportunity] = []

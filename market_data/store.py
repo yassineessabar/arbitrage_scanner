@@ -36,11 +36,21 @@ class MarketDataStore:
     async def upsert(self, quote: InstrumentQuote) -> None:
         """Insert or update a quote in the store.
 
+        Preserves volume_24h and open_interest from existing quote when
+        the new quote has None for these fields (e.g. Binance bookTicker
+        updates which lack volume data).
+
         Args:
             quote: Normalized InstrumentQuote to store.
         """
         key: StoreKey = (quote.exchange, quote.internal_symbol)
         async with self._lock:
+            existing = self._data.get(key)
+            if existing is not None:
+                if quote.volume_24h is None and existing.volume_24h is not None:
+                    quote.volume_24h = existing.volume_24h
+                if quote.open_interest is None and existing.open_interest is not None:
+                    quote.open_interest = existing.open_interest
             self._data[key] = quote
 
     async def get(
