@@ -25,9 +25,6 @@ _project_root = str(Path(__file__).parent.parent)
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from config.settings import get_settings
-from simulation.demo import run_demo_simulation
-from simulation.cross_exchange_demo import run_cross_exchange_demo
 from dashboard.simulation_panel import render_simulation_panel
 from dashboard.cross_exchange_panel import render_cross_exchange_panel
 
@@ -76,14 +73,22 @@ st.markdown(
 # ── Shared State File (written by main.py) ──
 STATE_FILE = os.path.join(_project_root, "data", "dashboard_state.json")
 
-# Remote VPS config — set these env vars to sync state from a remote server
-# Example: SCANNER_VPS_HOST=ubuntu@vps-d62ba235.vps.ovh.net
-#          SCANNER_VPS_PASSWORD=yourpassword
-#          SCANNER_VPS_PATH=~/arbitrage_scanner/data/dashboard_state.json
-VPS_HOST = os.environ.get("SCANNER_VPS_HOST", "")
-VPS_PASSWORD = os.environ.get("SCANNER_VPS_PASSWORD", "")
+# ── Load VPS config from .env file or environment ──
+_env_file = os.path.join(_project_root, ".env")
+_env_vars: Dict[str, str] = {}
+if os.path.exists(_env_file):
+    with open(_env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                k, v = line.split("=", 1)
+                _env_vars[k.strip()] = v.strip()
+
+VPS_HOST = os.environ.get("SCANNER_VPS_HOST", _env_vars.get("SCANNER_VPS_HOST", ""))
+VPS_PASSWORD = os.environ.get("SCANNER_VPS_PASSWORD", _env_vars.get("SCANNER_VPS_PASSWORD", ""))
 VPS_REMOTE_PATH = os.environ.get(
-    "SCANNER_VPS_PATH", "~/arbitrage_scanner/data/dashboard_state.json"
+    "SCANNER_VPS_PATH",
+    _env_vars.get("SCANNER_VPS_PATH", "~/arbitrage_scanner/data/dashboard_state.json"),
 )
 
 
@@ -117,8 +122,17 @@ def load_state() -> dict:
         return {}
     try:
         with open(STATE_FILE, "r") as f:
-            return json.load(f)
+            raw = f.read()
+        return json.loads(raw)
     except (json.JSONDecodeError, OSError):
+        # File may be partially written; try to parse up to the last valid JSON
+        try:
+            # Truncate at last closing brace
+            idx = raw.rfind("}")
+            if idx > 0:
+                return json.loads(raw[: idx + 1])
+        except Exception:
+            pass
         return {}
 
 
@@ -154,26 +168,12 @@ def main() -> None:
     # ── Tab 1: Basis Simulation ──
     with tab_basis_sim:
         sim_state = state.get("simulation", {})
-        # Use live data if scanner is running (has "enabled" key), otherwise demo
-        if not sim_state or "enabled" not in sim_state:
-            settings = get_settings()
-            if settings.simulation.enabled:
-                if "demo_sim_state" not in st.session_state:
-                    st.session_state.demo_sim_state = run_demo_simulation(settings)
-                sim_state = st.session_state.demo_sim_state
-                st.caption("DEMO DATA — Start the scanner (`python main.py`) for live simulated P&L")
-        # Pass basis opportunities (rejected ones) to the panel
         basis_opps = state.get("opportunities", [])
         render_simulation_panel(sim_state, basis_opps)
 
     # ── Tab 2: Cross-Exchange Arbitrage ──
     with tab_cross_exchange:
         cx_state = state.get("cross_exchange", {})
-        if not cx_state or "enabled" not in cx_state:
-            if "demo_cx_state" not in st.session_state:
-                st.session_state.demo_cx_state = run_cross_exchange_demo()
-            cx_state = st.session_state.demo_cx_state
-            st.caption("DEMO DATA — Start the scanner (`python main.py`) for live simulated P&L")
         render_cross_exchange_panel(cx_state)
 
     # ── Auto-refresh (seamless, no full page reload) ──

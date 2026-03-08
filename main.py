@@ -298,8 +298,10 @@ class ArbitrageScanner:
 
         try:
             os.makedirs(os.path.dirname(DASHBOARD_STATE_PATH), exist_ok=True)
-            with open(DASHBOARD_STATE_PATH, "w") as f:
+            tmp_path = DASHBOARD_STATE_PATH + ".tmp"
+            with open(tmp_path, "w") as f:
                 json.dump(state, f, default=str)
+            os.replace(tmp_path, DASHBOARD_STATE_PATH)
         except OSError as e:
             logger.error("dashboard_state_write_error", error=str(e))
 
