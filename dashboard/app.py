@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Dict, Optional
 
 import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 # Add project root to path for imports
 _project_root = str(Path(__file__).parent.parent)
@@ -175,14 +176,9 @@ def main() -> None:
             st.caption("DEMO DATA — Start the scanner (`python main.py`) for live simulated P&L")
         render_cross_exchange_panel(cx_state)
 
-    # ── Auto-refresh ──
-    refresh_seconds = state.get("refresh_interval", 30)
-    st.markdown(
-        f"""
-        <meta http-equiv="refresh" content="{refresh_seconds}">
-        """,
-        unsafe_allow_html=True,
-    )
+    # ── Auto-refresh (seamless, no full page reload) ──
+    refresh_seconds = state.get("refresh_interval", 15)
+    st_autorefresh(interval=refresh_seconds * 1000, key="scanner_refresh")
 
 
 if __name__ == "__main__":
